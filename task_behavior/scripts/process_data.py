@@ -6,29 +6,17 @@ import os
 import pandas as pd
 from create_event_utils import create_events
 # some DVs are defined in utils if they deviate from normal expanalysis
-from utils import get_name_map, get_timing_correction, get_median_rts, get_mean_rts, get_neg_rt_correction, fix_swapped_keys
-#for working in jupyter lab 
-
-# parser = argparse.ArgumentParser()
-# parser.add_argument('--clear', action='store_true')
-# parser.add_argument('--quiet', action='store_false')
-# args = parser.parse_args()
-# clear = args.clear
-# verbose = args.quiet
-# aims=args.aim
+from utils import get_name_map, get_timing_correction, get_neg_rt_correction, fix_swapped_keys
 
 aims = ['aim1']
 clear = True
 verbose = True
 no_workerid = []
+
 for aim in aims:
     print('beginning %s' % aim)
     # set up map between file names and names of tasks
     name_map = get_name_map()
-
-    #task_dfs = defaultdict(pd.DataFrame)
-
-    #make directories
 
     # clean data
     if verbose: print("Processing Tasks")
@@ -45,12 +33,6 @@ for aim in aims:
         cleaned_file_path = os.path.join(f'/oak/stanford/groups/russpold/data/uh2/{aim}/behavioral_data/processed_sharing/%s' % cleaned_file_name)
         events_file_path = os.path.join(f'/oak/stanford/groups/russpold/data/uh2/{aim}/behavioral_data/event_files_sharing/%s' % event_file_name)
 
-        # if this file has already been cleaned, continue
-        # if os.path.exists(cleaned_file_path):
-        #     df = pd.read_csv(cleaned_file_path)
-        #     exp_id = df.experiment_exp_id.unique()[0] #gets the value of experiment_exp_id, and assigns it to exp_id
-        # else:
-            # else proceed
         df = pd.read_csv(subj_file, engine='python')
         # get exp_id
         if 'exp_id' in df.columns:
@@ -82,16 +64,12 @@ for aim in aims:
                 exp_id = 'columbia_card_task_fmri'
             df.loc[:,'experiment_exp_id'] = exp_id
             # make sure there is a subject column
-            if 'subject' not in df.columns:
-                no_workerid.append(filey)
             df['worker_id'] = filey.split('_')[0]
-            # change column from subject to worker_id
-            #df.rename(columns={'subject':'worker_id'}, inplace=True)
 
             # post process data, drop rows, etc.....
             drop_columns = ['view_history', 'stimulus', 'trial_index',
                             'internal_node_id', 'test_start_block','exp_id',
-                            'trigger_times']
+                            'trigger_times', 'subject']
             
             df = clean_data(df, exp_id=exp_id, drop_columns=drop_columns)
             # drop unnecessary rows
@@ -101,9 +79,9 @@ for aim in aims:
             for row, vals in drop_dict.items():
                 df = df.query('%s not in  %s' % (row, vals))
             df.to_csv(cleaned_file_path, index=False)
-        #task_dfs[exp_id] = pd.concat([task_dfs[exp_id], df], axis=0)
 
 if verbose: print("Creating Event Files")
+
 # calculate event files
 for subj_file in raw_files:
     filey = os.path.basename(subj_file)
@@ -113,7 +91,7 @@ for subj_file in raw_files:
     events_file_path = os.path.join(f'/oak/stanford/groups/russpold/data/uh2/{aim}/behavioral_data/event_files_sharing/%s' % event_file_name)
     os.makedirs(f'/oak/stanford/groups/russpold/data/uh2/{aim}/behavioral_data/event_files', exist_ok=True) 
 
-  # get & save cleaned file
+    # get & save cleaned file
     if 'preRating' not in cleaned_file_path:
         df = pd.read_csv(cleaned_file_path)
         exp_id = df.experiment_exp_id.unique()[0]

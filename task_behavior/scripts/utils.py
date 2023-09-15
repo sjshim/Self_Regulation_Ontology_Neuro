@@ -2,51 +2,19 @@ from glob import glob
 from os import path
 import pandas as pd
 import numpy as np
-#for WATT min_moves calculator
-import copy 
-#import msgpack
+import copy
 
-# function to correct processing of a few problematic files
-# need to change time_elapsed to reflect the fact that fmri triggers were
-# sent out too quickly (at 8 times the rate), thus starting the scan 14 TRs
-# early. Those 14 TRs of data therefore need to be thrown out, which is
-# accomplished by setting the "0" of the scan 14 TRs later
-
-# scratch the above, the duration of the trigger_wait trials were about 85ms 
-# instead of 680ms as with other tasks, for about 15 trials
-# so subtracting tr_correction amount from all trials' time_elapsed
-def aim4_latency_correction(filey, df):
-    problematic_subjects = {'be4372': ['ses-02'], 
-                            'be4879': ['ses-01', 'ses-02'],
-                            'be4631': ['ses-01', 'ses-02'],
-                            'be5036': ['ses-01', 'ses-02'],
-                            'be5130': ['ses-01', 'ses-02'],
-                            'be4306': ['ses-01'], 
-                            's1378': ['ses-01']}
-    subject_info = filey.split('_')
-    sub = subject_info[0]
-    session =  subject_info[1]
-    task = subject_info[2].split('.')[0]
-    
-    if sub in problematic_subjects.keys():
-        print(sub, session)
-        if session in problematic_subjects[sub]:
-                index = df[df['trial_id'] == 'fmri_trigger_wait'].index[0]
-                df.time_elapsed[index+1:] += 133
-    return df
-    
-
-def get_timing_correction(filey, TR=680, n_TRs=14):
+def get_timing_correction(filey):
     problematic_files = ['s568_motorSelectiveStop.csv', 's568_stroop.csv',
-                         's568_surveyMedley.csv', 's568_DPX.csv',
-                         's568_discountFix.csv',
-                         's556_motorSelectiveStop.csv', 's556_stroop.csv',
-                         's556_surveyMedley.csv', 's556_DPX.csv',
-                         's556_discountFix.csv',
-                         's561_WATT3.csv', 's561_ANT.csv',
-                         's561_twoByTwo.csv', 's561_CCTHot.csv',
-                         's561_stopSignal.csv']
-    #tr_correction = TR * n_TRs
+                        's568_surveyMedley.csv', 's568_DPX.csv',
+                        's568_discountFix.csv',
+                        's556_motorSelectiveStop.csv', 's556_stroop.csv',
+                        's556_surveyMedley.csv', 's556_DPX.csv',
+                        's556_discountFix.csv',
+                        's561_WATT3.csv', 's561_ANT.csv',
+                        's561_twoByTwo.csv', 's561_CCTHot.csv',
+                        's561_stopSignal.csv']
+
     tr_correction = (680-85)*15
     if filey in problematic_files:
         return tr_correction
@@ -93,81 +61,9 @@ def get_name_map():
             'survey_medley': 'surveyMedley',
             'twobytwo': 'twoByTwo',
             'ward_and_allport': 'WATT3',
-            'manipulation_task': 'manipulationTask',
-            'pre_rating': 'preRating',
-            'rest': 'rest',
-            'uh2_video': 'rest',    
-                #for the manipulation tasks that have 'cue_control_food' for the exp_id
-            'cue_control_food': 'manipulationTask'}
+            'rest': 'rest'}
     
     return name_map  
-
-
-def get_event_files(subj):
-    file_dir = path.dirname(__file__)
-    event_files = {}
-    for subj_file in glob(path.join(file_dir, '../behavioral_data/event_files/*%s*' % subj)):
-        df = pd.read_csv(subj_file, sep='\t')
-        exp_id = path.basename(subj_file).split('_')[1]
-        event_files[exp_id] = df
-    return event_files
-
-def get_processed_files(subj):
-    file_dir = path.dirname(__file__)
-    processed_files = {}
-    for subj_file in glob(path.join(file_dir, '../behavioral_data/processed/*%s*' % subj)):
-        df = pd.read_csv(subj_file)
-        exp_id = path.basename(subj_file).split('_')[1]
-        processed_files[exp_id] = df
-    return processed_files
-
-def participant_means(df):
-    return [np.mean(df.rt[(df.worker_id==subj) & (df.rt>0)]) for subj in df.worker_id.unique()]
-
-def get_mean_rts(task_dfs):
-    """function that calculates median RT"""
-    task_mean_rts = {task: participant_means(df) for task,df in task_dfs.items()}
-#     # special cases handled below
-#     # ** twoByTwo **
-#     if (len(task_dfs["twobytwo"])>0):
-#         print("two by two loop working")
-#         median_cue_length = task_dfs['twobytwo'].CTI.quantile(.5)
-#         task_50th_rts['twobytwo'] += median_cue_length
-#     if (len(task_dfs["ward_and_allport"])>0):
-#     # ** WATT3 **
-#         WATT_df = task_dfs['ward_and_allport'].query('exp_stage == "test"')
-#     # get the first move times (plan times)
-#         plan_times = WATT_df.query('trial_id == "to_hand" and num_moves_made==1').rt
-#     # get other move times
-#         move_times = WATT_df.query('not (trial_id == "to_hand" and num_moves_made==1)')
-#     # drop feedback
-#         move_times = move_times.query('trial_id != "feedback"').rt
-#         task_50th_rts['ward_and_allport'] = {'planning_time': plan_times.quantile(.5),
-#                                          'move_time': move_times.quantile(.5)}
-    return task_mean_rts
-
-def get_median_rts(task_dfs):
-    """function that calculates median RT"""
-    task_50th_rts = {task: df.rt[df.rt>0].quantile(.5) for task,df in task_dfs.items()}
-    # special cases handled below
-    # ** twoByTwo **
-    #if (len(task_dfs["twobytwo"])>0):
-    #    print("two by two loop working")
-    #    median_cue_length = task_dfs['twobytwo'].CTI.quantile(.5)
-    #    task_50th_rts['twobytwo'] += median_cue_length
-    if (len(task_dfs["ward_and_allport"])>0):
-        print('watt happening')
-    # ** WATT3 **
-        WATT_df = task_dfs['ward_and_allport'].query('exp_stage == "test"')
-    # get the first move times (plan times)
-        plan_times = WATT_df.query('trial_id == "to_hand" and num_moves_made==1').rt
-    # get other move times
-        move_times = WATT_df.query('not (trial_id == "to_hand" and num_moves_made==1)')
-    # drop feedback
-        move_times = move_times.query('trial_id != "feedback"').rt
-        task_50th_rts['ward_and_allport'] = {'planning_time': plan_times.quantile(.5),
-                                         'move_time': move_times.quantile(.5)}
-    return task_50th_rts
 
 def get_survey_items_order():
 
@@ -236,45 +132,3 @@ def get_survey_items_order():
     item_id_map = dict(zip(item_text, item_id))
 
     return item_id_map
-
-
-# FUNCTIONS TO CALCULATE THE MINIMUM # OF WATT MOVES
-def grab_block(state, idx, goal, hand, num_moves, visited_states):
-    block_idx = np.max(np.nonzero(state[idx]))
-    hand = [state[idx][block_idx]] #put top block in hand
-    state[idx][block_idx] = 0 #change block's place to empty
-    if state in visited_states: #if this move doesn't progress, skip it
-        return np.inf
-    else:
-        visited_states.append(state)
-        return solve_WATT(state, goal, hand, num_moves, visited_states)
-    
-def place_block(state, idx, goal, hand, num_moves, visited_states):
-    #find topmost empty spot on the rod
-    block_locs = np.array(np.nonzero(state[idx]))
-    if block_locs.size==0:
-        block_idx = 0
-    else:
-        block_idx = np.max(block_locs) + 1
-        
-    state[idx][block_idx] = hand[0] #place block from hand onto rod
-    hand = [] #empty hand
-    if state in visited_states: #if this move doesn't progress, skip it
-        return np.inf
-    else:
-        visited_states.append(state)
-        num_moves += 1 #update the number of moves
-        if num_moves > 16: #if the algo has gone too deeply down a rabbit hole, abort
-            return np.inf
-        else:
-            return solve_WATT(state, goal, hand, num_moves, visited_states)
-
-
-def solve_WATT(state, goal, hand, num_moves, visited_states):
-    if state==goal:
-        return num_moves
-    else:
-        if len(hand)==0:
-            return np.nanmin([grab_block(copy.deepcopy(state), idx, goal, copy.deepcopy(hand), num_moves, msgpack.unpackb(msgpack.packb(visited_states))) for idx in range(len(state)) if np.array(np.nonzero(state[idx])).size!=0]) #grab blocks from all possible columns that aren't empty
-        elif len(hand)==1:
-            return np.nanmin([place_block(copy.deepcopy(state), idx, goal, copy.deepcopy(hand), num_moves, msgpack.unpackb(msgpack.packb(visited_states))) for idx in range(len(state)) if np.array(np.nonzero(state[idx])).size!=np.array(state[idx]).size]) #place block on all columns that aren't full

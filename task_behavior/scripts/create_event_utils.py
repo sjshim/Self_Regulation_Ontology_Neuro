@@ -124,7 +124,6 @@ def create_CCT_event(df, aim):
 
     # events_df.loc[ITI_trials, 'duration'] = events_df.loc[ITI_trials, 'stim_duration']-750
     # print(events_df.loc[ITI_trials])
-
     all_frames = []  # List to store chunks of DataFrame
     start_idx = 0
 
@@ -427,6 +426,7 @@ def create_WATT_event(df,aim, duration):
     # add durations for feedback
     events_df.loc[feedback, 'duration'] = events_df.loc[feedback, 'stim_duration']
 
+    subject = events_df['worker_id'].unique()[0]
 
     # Identify the feedback rows
     feedback_rows = events_df[events_df['trial_id'] == 'feedback'].copy()
@@ -434,13 +434,24 @@ def create_WATT_event(df,aim, duration):
     feedback_rows['ITI_duration'] = feedback_rows['block_duration'] - feedback_rows['duration']
     # Calculate the onset for the 'ITI' rows
     feedback_rows['ITI_onset'] = feedback_rows['onset'] + 1000
-    # Create the 'ITI' rows
-    iti_rows = pd.DataFrame({
-        'duration': feedback_rows['ITI_duration'],
-        'onset': feedback_rows['ITI_onset'],
-        'trial_id': 'ITI'
-    })
+    # Create the 'ITI' rows by copying the preceding rows
+    iti_rows = feedback_rows.copy()
 
+    # Shift the values down one row to match the preceding trial
+    iti_rows = iti_rows.shift(periods=-1, axis=0)
+
+    # Modify the columns that should be different for 'ITI'
+    iti_rows['duration'] = iti_rows['ITI_duration']
+    iti_rows['onset'] = iti_rows['ITI_onset']
+    iti_rows['trial_id'] = 'ITI'
+    iti_rows['planning'] = 0  # or whatever value is appropriate for 'ITI'
+
+    # Here, the rest of the columns will inherit values from the preceding row (trial)
+    # If you want to manually override some columns, you can do so here. For example:
+    # iti_rows['condition'] = 'ITI_condition'
+
+    # Remove the extra ITI_duration and ITI_onset columns
+    iti_rows = iti_rows.drop(['ITI_duration', 'ITI_onset'], axis=1)
     # Append the 'ITI' rows to the original dataframe
     events_df = pd.concat([events_df, iti_rows])
 

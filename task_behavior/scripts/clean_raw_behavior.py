@@ -71,24 +71,6 @@ def CCT_fmri_post(df):
 def conditional_stop_signal_post(df):
     df.insert(0,'stopped',df['key_press'] == -1)
     df.loc[:,'correct'] = (df['key_press'] == df['correct_response']).astype(float)
-    
-    # # quality check
-    # stop_counts = df.query('exp_stage == "test" and condition == "stop"').groupby('worker_id').stopped.sum()
-    # possible_stops = df.query('exp_stage == "test" and condition == "stop"').groupby('worker_id').stopped.count()
-    # # reject people who stop significantly less or more than 50% of the time
-    # passed_check = numpy.logical_and(stop_counts <= binom.ppf(.975, n=possible_stops, p=.5), stop_counts >= binom.ppf(.025, n=possible_stops, p=.5))
-    # passed_check = passed_check[passed_check]
-    # # reject people who do not stop on ignore trials significantly less than on stop trials
-    # stop_counts = df.query('condition != "go" and exp_stage == "test"').groupby(['worker_id','condition']).stopped.sum().reset_index()
-    # stop_counts.loc[:,'goed'] = 60 - stop_counts.stopped 
-    # for worker in list(passed_check.index):
-    #     stop_counts[stop_counts.worker_id == worker]
-    #     obs = numpy.matrix(stop_counts[stop_counts.worker_id == worker][['stopped','goed']])
-    #     p = chi2_contingency(obs)[1]
-    #     if obs[0,0]>obs[0,1] or p>.05:
-    #         passed_check.loc[worker] = False
-    # passed_check = passed_check[passed_check]
-    # df.loc[:, 'passed_check'] = df['worker_id'].map(lambda x: x in passed_check)
     return df
 
 def DPX_post(df):
@@ -128,14 +110,13 @@ def WATT_post(df):
     i_index = [df.index.get_loc(i)-1 for i in index]
     df.loc[index,'problem_id'] = df.iloc[i_index]['problem_id'].tolist()
     df.loc[index,'condition'] = df.iloc[i_index]['condition'].tolist()
-    # 
     return df
 
 #***********************************
 # CREATE CLEANED DATAFRAMES
 #***********************************
 
-def clean_data(df, exp_id = None, apply_post = True, drop_columns = None, lookup = True):
+def clean_data(df, exp_id = None, apply_post = True, drop_columns = None):
     '''clean_df returns a pandas dataset after removing a set of default generic 
     columns. Optional variable drop_cols allows a different set of columns to be dropped
     :df: a pandas dataframe
@@ -148,13 +129,6 @@ def clean_data(df, exp_id = None, apply_post = True, drop_columns = None, lookup
     if apply_post:
         # apply post processing 
         df = post_process_exp(df, exp_id)
-    # if lookup == True:
-    #     #convert vals based on lookup
-    #     for col in df.columns:
-    #         try:
-    #             df.loc[:,col] = df[col].map(lookup_val)
-    #         except: 
-    #             print(f"Column {col} not in dataframe")
             
     # Drop unnecessary columns
     if drop_columns == None:
@@ -173,9 +147,9 @@ def clean_data(df, exp_id = None, apply_post = True, drop_columns = None, lookup
 
 def get_drop_columns():
     return ['view_history', 'trial_index', 'internal_node_id', 
-           'stim_duration', 'block_duration', 'feedback_duration','timing_post_trial', 
-           'test_start_block','exp_id']
-           
+        'stim_duration', 'block_duration', 'feedback_duration','timing_post_trial', 
+        'test_start_block','exp_id']
+        
 def get_drop_rows(exp_id):
     '''Function used by clean_df to drop rows from dataframes with one experiment
     :experiment: experiment key used to look up which rows to drop from a dataframe
@@ -185,21 +159,21 @@ def get_drop_rows(exp_id):
     no_test_start_block = ['welcome', 'text','instruction', 'attention_check','end', 'post task questions', 'fixation', \
                 'practice_intro', 'rest', 'rest_block', 'test_intro', 'task_setup']
     lookup = {'adaptive_n_back': {'trial_id': gen_cols + ['update_target', 'update_delay', 'delay_text']},
-                'attention_network_task': {'trial_id': gen_cols + ['spatialcue', 'centercue', 'doublecue', 'nocue', 'rest block', 'intro']},
-                'columbia_card_task_cold': {'trial_id': gen_cols + ['calculate reward','reward','end_instructions']}, 
-                'columbia_card_task_hot': {'trial_id': gen_cols + ['calculate reward', 'reward', 'test_intro']}, 
-                'columbia_card_task_fmri': {'trial_id': gen_cols + ['calculate reward', 'reward']}, 
-                'directed_forgetting': {'trial_id': gen_cols + ['ITI_fixation', 'intro_test', 'stim', 'cue', 'instruction_images']},
-                'discount_fixed': {'trial_id': gen_cols},
-                'dot_pattern_expectancy': {'trial_id': gen_cols + ['instruction_images', 'feedback']},
-                'go_nogo': {'trial_id': gen_cols + ['reset_trial']},
-                'motor_selective_stop_signal': {'trial_id': gen_cols + ['prompt_fixation', 'feedback']},
-                'stop_signal': {'trial_id': gen_cols + ['reset', 'feedback']},
-                'stroop': {'trial_id': gen_cols + []}, 
-                'survey_medley': {'trial_id': gen_cols},
-                'twobytwo': {'trial_id': no_test_start_block + ['cue', 'gap', 'set_stims']},
-                'tower_of_london': {'trial_id': gen_cols + ['advance', 'practice']},
-                'ward_and_allport': {'trial_id': gen_cols + ['practice_start_block', 'reminder', 'test_start_block']}
+            'attention_network_task': {'trial_id': gen_cols + ['spatialcue', 'centercue', 'doublecue', 'nocue', 'rest block', 'intro']},
+            'columbia_card_task_cold': {'trial_id': gen_cols + ['calculate reward','reward','end_instructions']}, 
+            'columbia_card_task_hot': {'trial_id': gen_cols + ['calculate reward', 'reward', 'test_intro']}, 
+            'columbia_card_task_fmri': {'trial_id': gen_cols + ['calculate reward', 'reward']}, 
+            'directed_forgetting': {'trial_id': gen_cols + ['ITI_fixation', 'intro_test', 'stim', 'cue', 'instruction_images']},
+            'discount_fixed': {'trial_id': gen_cols},
+            'dot_pattern_expectancy': {'trial_id': gen_cols + ['instruction_images', 'feedback']},
+            'go_nogo': {'trial_id': gen_cols + ['reset_trial']},
+            'motor_selective_stop_signal': {'trial_id': gen_cols + ['prompt_fixation', 'feedback']},
+            'stop_signal': {'trial_id': gen_cols + ['reset', 'feedback']},
+            'stroop': {'trial_id': gen_cols + []}, 
+            'survey_medley': {'trial_id': gen_cols},
+            'twobytwo': {'trial_id': no_test_start_block + ['cue', 'gap', 'set_stims']},
+            'tower_of_london': {'trial_id': gen_cols + ['advance', 'practice']},
+            'ward_and_allport': {'trial_id': gen_cols + ['practice_start_block', 'reminder', 'test_start_block']}
     } 
     to_drop = lookup.get(exp_id, {})
     return to_drop
@@ -209,13 +183,13 @@ def post_process_exp(df, exp_id):
     :exp_id: experiment key used to look up appropriate grouping variables
     '''
     lookup = {'attention_network_task': ANT_post,
-              'columbia_card_task_fmri': CCT_fmri_post,
-              'dot_pattern_expectancy': DPX_post,
-              'motor_selective_stop_signal': conditional_stop_signal_post,
-              'stop_signal': stop_signal_post,
-              'stroop': stroop_post,
-              'twobytwo': twobytwo_post,
-              'ward_and_allport': WATT_post}     
+            'columbia_card_task_fmri': CCT_fmri_post,
+            'dot_pattern_expectancy': DPX_post,
+            'motor_selective_stop_signal': conditional_stop_signal_post,
+            'stop_signal': stop_signal_post,
+            'stroop': stroop_post,
+            'twobytwo': twobytwo_post,
+            'ward_and_allport': WATT_post}     
                 
     fun = lookup.get(exp_id, lambda df: df)
     return fun(df).sort_index(axis = 1)

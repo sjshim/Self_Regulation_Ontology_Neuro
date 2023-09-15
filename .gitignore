@@ -3,5 +3,5 @@
 .DS_Store
 .DS_Store?
 ._*
-
+./task_behavior/script/check_nort_range.ipynb
 __pycache__
